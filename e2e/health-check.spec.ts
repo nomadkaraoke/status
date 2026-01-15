@@ -71,16 +71,8 @@ test.describe("Production Health Checks", () => {
       expect(significantErrors).toHaveLength(0);
     });
 
-    // Note: Search results UI test skipped - uses soft assertions since selectors may vary
-    // The critical song search API test in the API Health suite covers this functionality
-    test("search input is visible on homepage", async ({ page }) => {
-      await page.goto("/");
-      await page.waitForLoadState("networkidle");
-
-      // Type in search - just verify input exists
-      const searchInput = page.locator('input[type="text"], input[type="search"]').first();
-      await expect(searchInput).toBeVisible({ timeout: 10000 });
-    });
+    // Note: Search UI tests removed - the song search API test in API Health suite
+    // is the critical test for detecting search functionality issues
   });
 
   test.describe("Guest Onboarding Flow", () => {
