@@ -20,6 +20,9 @@ test.describe("Comprehensive Onboarding Flow", () => {
   // Increase timeout for this comprehensive test
   test.setTimeout(120000); // 2 minutes
 
+  // Store auth token for cleanup
+  let authToken: string | null = null;
+
   test.beforeEach(async ({ context, page }) => {
     // Clear state for fresh guest experience
     await context.clearCookies();
@@ -28,6 +31,37 @@ test.describe("Comprehensive Onboarding Flow", () => {
       localStorage.clear();
       sessionStorage.clear();
     });
+    authToken = null;
+  });
+
+  test.afterEach(async ({ request, page }) => {
+    // Clean up test data by deleting the guest user
+    // This prevents database clutter from hourly test runs
+    if (!authToken) {
+      // Try to get token from page localStorage
+      try {
+        authToken = await page.evaluate(() => localStorage.getItem("token"));
+      } catch {
+        // Page may have been closed
+      }
+    }
+
+    if (authToken) {
+      try {
+        const response = await request.delete("/api/auth/me", {
+          headers: {
+            Authorization: `Bearer ${authToken}`,
+          },
+        });
+        if (response.ok()) {
+          console.log("✓ Test user cleaned up successfully");
+        } else {
+          console.log(`⚠ Failed to clean up test user: ${response.status()}`);
+        }
+      } catch (error) {
+        console.log(`⚠ Error cleaning up test user: ${error}`);
+      }
+    }
   });
 
   test("complete quiz with manual artists and smart suggestions triggers all APIs", async ({
@@ -255,6 +289,9 @@ test.describe("Comprehensive Onboarding Flow", () => {
     );
     expect(apiErrors).toHaveLength(0);
 
+    // Capture auth token for cleanup
+    authToken = await page.evaluate(() => localStorage.getItem("token"));
+
     // Log summary
     console.log("=== Test Summary ===");
     console.log(`Total API calls to /api/quiz/artists: ${apiCalls.length}`);
@@ -278,10 +315,11 @@ test.describe("Comprehensive Onboarding Flow", () => {
     await page.waitForLoadState("networkidle");
     await page.waitForTimeout(2000);
 
-    // Extract the auth token from localStorage
+    // Extract the auth token from localStorage and store for cleanup
     const token = await page.evaluate(() => {
       return localStorage.getItem("token");
     });
+    authToken = token; // Store for afterEach cleanup
 
     if (!token) {
       console.log("No token found - skipping direct API test");
