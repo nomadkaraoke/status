@@ -595,7 +595,10 @@
       owner: 'nomadkaraoke',
       repo: 'status',
       e2eWorkflow: 'health-check.yml',
-      apiBase: 'https://decide.nomadkaraoke.com'
+      // Use direct Cloud Run URL for API checks (Cloudflare Worker strips CORS headers)
+      apiBase: 'https://karaoke-decide-718638054799.us-central1.run.app',
+      // Frontend URL still uses Cloudflare (same-origin not needed for HTML fetch)
+      frontendBase: 'https://decide.nomadkaraoke.com'
     };
 
     // Live health checks
@@ -604,7 +607,7 @@
         { id: 'check-health', url: '/api/health', validate: (d) => d.status === 'healthy' },
         { id: 'check-firestore', url: '/api/health/deep', validate: (d) => d.checks?.firestore?.status === 'healthy', extract: (d) => d.checks?.firestore?.message },
         { id: 'check-bigquery', url: '/api/health/deep', validate: (d) => d.checks?.bigquery?.status === 'healthy', extract: (d) => d.checks?.bigquery?.message },
-        { id: 'check-frontend', url: '/', isHtml: true },
+        { id: 'check-frontend', url: '/', isHtml: true, useFrontendBase: true },
       ];
 
       let allPassed = true;
@@ -613,7 +616,8 @@
       for (const check of checks) {
         const el = document.getElementById(check.id);
         try {
-          const url = CONFIG.apiBase + check.url;
+          const baseUrl = check.useFrontendBase ? CONFIG.frontendBase : CONFIG.apiBase;
+          const url = baseUrl + check.url;
           const response = await fetch(url, { mode: 'cors' });
 
           if (check.isHtml) {
