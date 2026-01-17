@@ -232,8 +232,12 @@
     /* Service Cards */
     .services-grid {
       display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+      grid-template-columns: repeat(3, 1fr);
       gap: 1rem;
+    }
+
+    @media (max-width: 900px) {
+      .services-grid { grid-template-columns: repeat(2, 1fr); }
     }
 
     .service-card {
@@ -521,55 +525,9 @@
       <div class="status-timestamp" id="last-updated"></div>
     </div>
 
-    <!-- Live API Checks - Karaoke Decide -->
-    <div class="section-header">
-      <span class="section-title">Karaoke Decide - Live Checks</span>
-    </div>
-    <div class="live-checks" id="live-checks">
-      <div class="check-item">
-        <span class="check-name">API Health</span>
-        <span class="check-result loading" id="check-health">Checking...</span>
-      </div>
-      <div class="check-item">
-        <span class="check-name">Database (Firestore)</span>
-        <span class="check-result loading" id="check-firestore">Checking...</span>
-      </div>
-      <div class="check-item">
-        <span class="check-name">Song Catalog (BigQuery)</span>
-        <span class="check-result loading" id="check-bigquery">Checking...</span>
-      </div>
-      <div class="check-item">
-        <span class="check-name">Frontend</span>
-        <span class="check-result loading" id="check-frontend">Checking...</span>
-      </div>
-    </div>
-
-    <!-- Live API Checks - Flacfetch Audio Service -->
-    <div class="section-header">
-      <span class="section-title">Flacfetch Audio Service - Live Checks</span>
-    </div>
-    <div class="live-checks" id="flacfetch-checks">
-      <div class="check-item">
-        <span class="check-name">RED</span>
-        <span class="check-result loading" id="check-red">Checking...</span>
-      </div>
-      <div class="check-item">
-        <span class="check-name">OPS</span>
-        <span class="check-result loading" id="check-ops">Checking...</span>
-      </div>
-      <div class="check-item">
-        <span class="check-name">YouTube</span>
-        <span class="check-result loading" id="check-youtube">Checking...</span>
-      </div>
-      <div class="check-item">
-        <span class="check-name">Transmission</span>
-        <span class="check-result loading" id="check-transmission">Checking...</span>
-      </div>
-    </div>
-
     <!-- E2E Tests Section -->
     <div class="section-header">
-      <span class="section-title">Automated Tests (Hourly)</span>
+      <span class="section-title">Automated Tests</span>
     </div>
     <div class="services-grid">
       <div class="service-card" id="e2e-card">
@@ -669,13 +627,59 @@
       </div>
     </div>
 
+    <!-- Live API Checks - Karaoke Decide -->
+    <div class="section-header">
+      <span class="section-title">Karaoke Decide - Live Checks</span>
+    </div>
+    <div class="live-checks" id="live-checks">
+      <div class="check-item">
+        <span class="check-name">API Health</span>
+        <span class="check-result loading" id="check-health">Checking...</span>
+      </div>
+      <div class="check-item">
+        <span class="check-name">Database (Firestore)</span>
+        <span class="check-result loading" id="check-firestore">Checking...</span>
+      </div>
+      <div class="check-item">
+        <span class="check-name">Song Catalog (BigQuery)</span>
+        <span class="check-result loading" id="check-bigquery">Checking...</span>
+      </div>
+      <div class="check-item">
+        <span class="check-name">Frontend</span>
+        <span class="check-result loading" id="check-frontend">Checking...</span>
+      </div>
+    </div>
+
+    <!-- Live API Checks - Flacfetch Audio Service -->
+    <div class="section-header">
+      <span class="section-title">Flacfetch Audio Service - Live Checks</span>
+    </div>
+    <div class="live-checks" id="flacfetch-checks">
+      <div class="check-item">
+        <span class="check-name">RED</span>
+        <span class="check-result loading" id="check-red">Checking...</span>
+      </div>
+      <div class="check-item">
+        <span class="check-name">OPS</span>
+        <span class="check-result loading" id="check-ops">Checking...</span>
+      </div>
+      <div class="check-item">
+        <span class="check-name">YouTube</span>
+        <span class="check-result loading" id="check-youtube">Checking...</span>
+      </div>
+      <div class="check-item">
+        <span class="check-name">Transmission</span>
+        <span class="check-result loading" id="check-transmission">Checking...</span>
+      </div>
+    </div>
+
     <footer>
       <div class="footer-links">
         <a href="https://decide.nomadkaraoke.com" target="_blank">Karaoke Decide</a>
         <a href="https://github.com/nomadkaraoke/status" target="_blank">GitHub</a>
         <a href="https://github.com/nomadkaraoke/status/actions" target="_blank">Actions</a>
       </div>
-      <p class="footer-note">Live checks run on page load. E2E tests run hourly via GitHub Actions.</p>
+      <p class="footer-note">Live checks run on page load. Automated tests run via GitHub Actions.</p>
     </footer>
   </div>
 
@@ -1037,34 +1041,29 @@
     }
 
     async function init() {
-      // Run live checks for both services in parallel
-      const [liveResult, flacfetchResult] = await Promise.all([
-        runLiveChecks(),
-        runFlacfetchChecks()
-      ]);
-
-      // Fetch workflow history from both repos in parallel
+      // Fetch workflow history first (automated tests section is at top)
       const days = getLast7Days();
       const [e2eRuns, karaokeGenRuns] = await Promise.all([
         fetchWorkflowRuns(CONFIG.e2eWorkflow),
         fetchWorkflowRuns(CONFIG.karaokeGenE2EWorkflow, 100, CONFIG.karaokeGenRepo)
       ]);
 
-      // Process runs - the workflow now has two jobs, filter by job name
-      // For now, we'll use the overall workflow status for both cards
-      // In future, we could parse job-specific results
+      // Process and display automated test results immediately
       const e2eStatus = processRuns(e2eRuns, days);
-
-      // For flacfetch, filter runs that include flacfetch job results
-      // Since both jobs are in same workflow, we use same data but could filter
       const flacfetchE2EStatus = processRuns(e2eRuns, days);
-
-      // Karaoke Gen E2E from karaoke-gen repo
       const karaokeGenE2EStatus = processRuns(karaokeGenRuns, days);
 
       updateE2ECard(e2eStatus, days);
       updateFlacfetchE2ECard(flacfetchE2EStatus, days);
       updateKaraokeGenE2ECard(karaokeGenE2EStatus, days);
+
+      // Then run live checks for both services in parallel
+      const [liveResult, flacfetchResult] = await Promise.all([
+        runLiveChecks(),
+        runFlacfetchChecks()
+      ]);
+
+      // Update overall status with all results
       updateOverallStatus(liveResult, flacfetchResult, e2eStatus, flacfetchE2EStatus, karaokeGenE2EStatus);
     }
 
