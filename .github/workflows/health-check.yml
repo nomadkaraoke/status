@@ -38,7 +38,7 @@ jobs:
       - name: Run Flacfetch Health Checks
         id: health_check
         env:
-          FLACFETCH_URL: http://104.198.214.26:8080
+          FLACFETCH_URL: https://flacfetch.nomadkaraoke.com
         run: |
           echo "Starting Flacfetch Health Check"
           echo "Time: $(date -u)"
@@ -125,7 +125,7 @@ jobs:
             Error: ${{ steps.error_summary.outputs.summary }}
 
             This likely means audio providers (RED/OPS/YouTube) are having issues.
-            Check: http://104.198.214.26:8080/health/deep
+            Check: https://flacfetch.nomadkaraoke.com/health/deep
         continue-on-error: true
 
       - name: Fail workflow if health check failed
@@ -166,6 +166,7 @@ jobs:
           echo ""
 
           npx playwright test e2e/ \
+            --ignore=e2e/flacfetch-health.spec.ts \
             --project=chromium \
             --reporter=list \
             2>&1 | tee test-output.log

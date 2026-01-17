@@ -6,7 +6,7 @@ import { test, expect } from "@playwright/test";
  * Run hourly by GitHub Actions to detect issues quickly.
  */
 
-const FLACFETCH_URL = process.env.FLACFETCH_URL || "http://104.198.214.26:8080";
+const FLACFETCH_URL = process.env.FLACFETCH_URL || "https://flacfetch.nomadkaraoke.com";
 
 test.describe("Flacfetch Health Checks", () => {
   test.describe("Deep Health Endpoint", () => {

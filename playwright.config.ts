@@ -6,6 +6,7 @@ export default defineConfig({
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 2 : 0,
   workers: process.env.CI ? 1 : undefined,
+  maxFailures: process.env.CI ? 1 : undefined, // fail fast in CI
   reporter: "list",
   use: {
     baseURL: process.env.BASE_URL || "https://decide.nomadkaraoke.com",
