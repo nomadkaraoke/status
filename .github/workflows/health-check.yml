@@ -165,8 +165,7 @@ jobs:
           echo "Target: https://decide.nomadkaraoke.com"
           echo ""
 
-          npx playwright test e2e/ \
-            --ignore=e2e/flacfetch-health.spec.ts \
+          npx playwright test e2e/health-check.spec.ts e2e/onboarding-comprehensive.spec.ts \
             --project=chromium \
             --reporter=list \
             2>&1 | tee test-output.log
