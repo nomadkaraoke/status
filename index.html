@@ -86,7 +86,7 @@
     .container {
       position: relative;
       z-index: 2;
-      max-width: 900px;
+      max-width: 1100px;
       margin: 0 auto;
       padding: 2rem 1.5rem;
     }
@@ -211,6 +211,25 @@
       color: var(--text-muted);
     }
 
+    .support-message {
+      margin-top: 1rem;
+      padding: 1rem;
+      background: rgba(255, 71, 87, 0.1);
+      border-radius: 0.5rem;
+      font-size: 0.85rem;
+      color: var(--text-secondary);
+      line-height: 1.6;
+    }
+
+    .support-message a {
+      color: var(--neon-cyan);
+      text-decoration: none;
+    }
+
+    .support-message a:hover {
+      text-decoration: underline;
+    }
+
     /* Section headers */
     .section-header {
       display: flex;
@@ -286,12 +305,14 @@
     .service-name {
       font-size: 0.95rem;
       font-weight: 600;
+      white-space: nowrap;
     }
 
     .service-endpoint {
       font-family: 'JetBrains Mono', monospace;
       font-size: 0.65rem;
       color: var(--text-muted);
+      white-space: nowrap;
     }
 
     .service-status {
@@ -523,6 +544,10 @@
         <span class="loading-text">Checking systems...</span>
       </div>
       <div class="status-timestamp" id="last-updated"></div>
+      <div class="support-message" id="support-message" style="display: none;">
+        We're already working on fixing these issues. If this is impacting you, please reach out:<br>
+        <a href="mailto:andrew@nomadkaraoke.com">andrew@nomadkaraoke.com</a> · <a href="tel:+18036363267">+1 (803) 636-3267</a>
+      </div>
     </div>
 
     <!-- E2E Tests Section -->
@@ -539,8 +564,8 @@
               </svg>
             </div>
             <div>
-              <div class="service-name">Karaoke Decide E2E</div>
-              <div class="service-endpoint">Playwright tests on decide.nomadkaraoke.com</div>
+              <div class="service-name">Decide</div>
+              <div class="service-endpoint">Hourly health checks</div>
             </div>
           </div>
           <div class="service-status unknown" id="e2e-status">
@@ -572,8 +597,8 @@
               </svg>
             </div>
             <div>
-              <div class="service-name">Flacfetch Health</div>
-              <div class="service-endpoint">Provider connectivity tests</div>
+              <div class="service-name">FlacFetch</div>
+              <div class="service-endpoint">Hourly provider checks</div>
             </div>
           </div>
           <div class="service-status unknown" id="flacfetch-e2e-status">
@@ -604,8 +629,8 @@
               </svg>
             </div>
             <div>
-              <div class="service-name">Karaoke Gen E2E</div>
-              <div class="service-endpoint">Full video generation test (daily)</div>
+              <div class="service-name">Gen</div>
+              <div class="service-endpoint">Daily generation test</div>
             </div>
           </div>
           <div class="service-status unknown" id="karaoke-gen-e2e-status">
@@ -675,9 +700,8 @@
 
     <footer>
       <div class="footer-links">
-        <a href="https://decide.nomadkaraoke.com" target="_blank">Karaoke Decide</a>
-        <a href="https://github.com/nomadkaraoke/status" target="_blank">GitHub</a>
-        <a href="https://github.com/nomadkaraoke/status/actions" target="_blank">Actions</a>
+        <a href="https://nomadkaraoke.com" target="_blank">Nomad Karaoke</a>
+        <a href="https://github.com/orgs/nomadkaraoke" target="_blank">GitHub</a>
       </div>
       <p class="footer-note">Live checks run on page load. Automated tests run via GitHub Actions.</p>
     </footer>
@@ -1038,6 +1062,10 @@
       `;
 
       document.getElementById('last-updated').textContent = `Last updated: ${formatDateTime(new Date())}`;
+
+      // Show support message during outages
+      const supportMessage = document.getElementById('support-message');
+      supportMessage.style.display = overallStatus === 'outage' ? 'block' : 'none';
     }
 
     async function init() {
