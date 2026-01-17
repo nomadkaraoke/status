@@ -1,6 +1,6 @@
 name: Health Check
 
-# E2E health checks for decide.nomadkaraoke.com
+# E2E health checks for Nomad Karaoke services
 on:
   # Run every hour
   schedule:
@@ -14,6 +14,126 @@ permissions:
   actions: write
 
 jobs:
+  flacfetch-health-check:
+    name: "Flacfetch Health Check"
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Install Playwright browsers
+        run: npx playwright install --with-deps chromium
+
+      - name: Run Flacfetch Health Checks
+        id: health_check
+        env:
+          FLACFETCH_URL: http://104.198.214.26:8080
+        run: |
+          echo "Starting Flacfetch Health Check"
+          echo "Time: $(date -u)"
+          echo "Target: $FLACFETCH_URL"
+          echo ""
+
+          npx playwright test e2e/flacfetch-health.spec.ts \
+            --project=chromium \
+            --reporter=list \
+            2>&1 | tee test-output.log
+
+          if grep -q "passed" test-output.log && ! grep -q "failed" test-output.log; then
+            echo "result=success" >> $GITHUB_OUTPUT
+            echo "FLACFETCH HEALTH CHECK PASSED"
+          else
+            echo "result=failure" >> $GITHUB_OUTPUT
+            echo "FLACFETCH HEALTH CHECK FAILED"
+          fi
+        continue-on-error: true
+
+      - name: Upload test artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: flacfetch-health-check-${{ github.run_number }}
+          path: |
+            test-results/
+            playwright-report/
+            test-output.log
+          retention-days: 7
+          if-no-files-found: ignore
+        continue-on-error: true
+
+      - name: Create summary
+        if: always()
+        run: |
+          echo "## Flacfetch Health Check Results" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "| Property | Value |" >> $GITHUB_STEP_SUMMARY
+          echo "|----------|-------|" >> $GITHUB_STEP_SUMMARY
+          echo "| Run | #${{ github.run_number }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Time | $(date -u) |" >> $GITHUB_STEP_SUMMARY
+          echo "| Result | ${{ steps.health_check.outputs.result || 'unknown' }} |" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+
+          if [ -f test-output.log ]; then
+            echo "### Test Output (last 50 lines)" >> $GITHUB_STEP_SUMMARY
+            echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
+            tail -50 test-output.log >> $GITHUB_STEP_SUMMARY
+            echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
+          fi
+
+      - name: Extract error summary
+        if: steps.health_check.outputs.result == 'failure'
+        id: error_summary
+        run: |
+          if [ -f test-output.log ]; then
+            SUMMARY=$(grep -i -E "(error|fail|timeout|expect|assert)" test-output.log | tail -3 | tr '\n' ' ' | cut -c1-200)
+            if [ -z "$SUMMARY" ]; then
+              SUMMARY=$(tail -3 test-output.log | tr '\n' ' ' | cut -c1-200)
+            fi
+            echo "summary=$SUMMARY" >> $GITHUB_OUTPUT
+          else
+            echo "summary=No output captured" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Send failure notification
+        if: steps.health_check.outputs.result == 'failure'
+        uses: dawidd6/action-send-mail@v3
+        with:
+          server_address: smtp.sendgrid.net
+          server_port: 587
+          username: apikey
+          password: ${{ secrets.SENDGRID_API_KEY }}
+          subject: "HEALTH FAILED - Flacfetch Audio Service #${{ github.run_number }}"
+          to: andrew@beveridge.uk
+          from: noreply@nomadkaraoke.com
+          body: |
+            Production health check failed for Flacfetch audio service.
+
+            Time: $(date -u)
+            Run: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+
+            Error: ${{ steps.error_summary.outputs.summary }}
+
+            This likely means audio providers (RED/OPS/YouTube) are having issues.
+            Check: http://104.198.214.26:8080/health/deep
+        continue-on-error: true
+
+      - name: Fail workflow if health check failed
+        if: steps.health_check.outputs.result == 'failure'
+        run: |
+          echo "Flacfetch health check failed - see test artifacts for details"
+          exit 1
+
   e2e-health-check:
     name: "E2E Health Check"
     runs-on: ubuntu-latest
