@@ -550,11 +550,11 @@
     </div>
     <div class="live-checks" id="flacfetch-checks">
       <div class="check-item">
-        <span class="check-name">RED Tracker</span>
+        <span class="check-name">RED</span>
         <span class="check-result loading" id="check-red">Checking...</span>
       </div>
       <div class="check-item">
-        <span class="check-name">OPS Tracker</span>
+        <span class="check-name">OPS</span>
         <span class="check-result loading" id="check-ops">Checking...</span>
       </div>
       <div class="check-item">
@@ -635,6 +635,38 @@
           </div>
         </div>
       </div>
+
+      <div class="service-card" id="karaoke-gen-e2e-card">
+        <div class="service-header">
+          <div class="service-info">
+            <div class="service-icon">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <polygon points="23 7 16 12 23 17 23 7"></polygon>
+                <rect x="1" y="5" width="15" height="14" rx="2" ry="2"></rect>
+              </svg>
+            </div>
+            <div>
+              <div class="service-name">Karaoke Gen E2E</div>
+              <div class="service-endpoint">Full video generation test (daily)</div>
+            </div>
+          </div>
+          <div class="service-status unknown" id="karaoke-gen-e2e-status">
+            <div class="status-dot loading"></div>
+            <span>...</span>
+          </div>
+        </div>
+        <div class="timeline-container">
+          <div class="timeline-header">
+            <span class="timeline-label">7-day history</span>
+            <span class="uptime-badge" id="karaoke-gen-e2e-uptime">--%</span>
+          </div>
+          <div class="timeline" id="karaoke-gen-e2e-timeline"></div>
+          <div class="timeline-dates">
+            <span id="karaoke-gen-e2e-date-start">--</span>
+            <span>Today</span>
+          </div>
+        </div>
+      </div>
     </div>
 
     <footer>
@@ -652,6 +684,9 @@
       owner: 'nomadkaraoke',
       repo: 'status',
       e2eWorkflow: 'health-check.yml',
+      // Karaoke Gen repo for happy path e2e test
+      karaokeGenRepo: 'karaoke-gen',
+      karaokeGenE2EWorkflow: 'e2e-happy-path.yml',
       // Use direct Cloud Run URL for API checks (Cloudflare Worker strips CORS headers)
       apiBase: 'https://karaoke-decide-718638054799.us-central1.run.app',
       // Frontend URL still uses Cloudflare (same-origin not needed for HTML fetch)
@@ -758,7 +793,7 @@
 
         if (healthData.transmission?.available) {
           transmissionEl.className = 'check-result success';
-          transmissionEl.textContent = `OK (${healthData.transmission.active_torrents} torrents)`;
+          transmissionEl.textContent = `OK (${healthData.transmission.active_torrents} active)`;
         } else {
           transmissionEl.className = 'check-result failure';
           transmissionEl.textContent = 'Unavailable';
@@ -805,8 +840,8 @@
       return date.toISOString().split('T')[0];
     }
 
-    async function fetchWorkflowRuns(workflow, perPage = 100) {
-      const url = `https://api.github.com/repos/${CONFIG.owner}/${CONFIG.repo}/actions/workflows/${workflow}/runs?per_page=${perPage}`;
+    async function fetchWorkflowRuns(workflow, perPage = 100, repo = CONFIG.repo) {
+      const url = `https://api.github.com/repos/${CONFIG.owner}/${repo}/actions/workflows/${workflow}/runs?per_page=${perPage}`;
       try {
         const response = await fetch(url, {
           headers: { 'Accept': 'application/vnd.github.v3+json' }
@@ -950,7 +985,27 @@
       renderTimeline('flacfetch-e2e-timeline', status.days);
     }
 
-    function updateOverallStatus(liveCheckResult, flacfetchResult, e2eStatus, flacfetchE2EStatus) {
+    function updateKaraokeGenE2ECard(status, days) {
+      const statusEl = document.getElementById('karaoke-gen-e2e-status');
+      statusEl.className = `service-status ${status.current}`;
+      statusEl.innerHTML = `
+        <div class="status-dot ${status.current}"></div>
+        <span>${status.current === 'success' ? 'Passing' : status.current === 'failure' ? 'Failing' : '...'}</span>
+      `;
+
+      if (status.currentUrl) {
+        statusEl.style.cursor = 'pointer';
+        statusEl.onclick = () => window.open(status.currentUrl, '_blank');
+      }
+
+      const uptime = calculateUptime(status.days);
+      document.getElementById('karaoke-gen-e2e-uptime').textContent = uptime !== null ? `${uptime}%` : '--%';
+      document.getElementById('karaoke-gen-e2e-date-start').textContent = formatDate(days[0]);
+
+      renderTimeline('karaoke-gen-e2e-timeline', status.days);
+    }
+
+    function updateOverallStatus(liveCheckResult, flacfetchResult, e2eStatus, flacfetchE2EStatus, karaokeGenE2EStatus) {
       const banner = document.getElementById('overall-status');
       const indicator = banner.querySelector('.status-indicator');
 
@@ -962,7 +1017,7 @@
         overallStatus = 'outage';
         statusText = 'Service Disruption';
         dotClass = 'failure';
-      } else if (e2eStatus?.current === 'failure' || flacfetchE2EStatus?.current === 'failure') {
+      } else if (e2eStatus?.current === 'failure' || flacfetchE2EStatus?.current === 'failure' || karaokeGenE2EStatus?.current === 'failure') {
         overallStatus = 'degraded';
         statusText = 'Degraded Performance';
         dotClass = 'warning';
@@ -988,9 +1043,12 @@
         runFlacfetchChecks()
       ]);
 
-      // Fetch workflow history for both
+      // Fetch workflow history from both repos in parallel
       const days = getLast7Days();
-      const e2eRuns = await fetchWorkflowRuns(CONFIG.e2eWorkflow);
+      const [e2eRuns, karaokeGenRuns] = await Promise.all([
+        fetchWorkflowRuns(CONFIG.e2eWorkflow),
+        fetchWorkflowRuns(CONFIG.karaokeGenE2EWorkflow, 100, CONFIG.karaokeGenRepo)
+      ]);
 
       // Process runs - the workflow now has two jobs, filter by job name
       // For now, we'll use the overall workflow status for both cards
@@ -1001,9 +1059,13 @@
       // Since both jobs are in same workflow, we use same data but could filter
       const flacfetchE2EStatus = processRuns(e2eRuns, days);
 
+      // Karaoke Gen E2E from karaoke-gen repo
+      const karaokeGenE2EStatus = processRuns(karaokeGenRuns, days);
+
       updateE2ECard(e2eStatus, days);
       updateFlacfetchE2ECard(flacfetchE2EStatus, days);
-      updateOverallStatus(liveResult, flacfetchResult, e2eStatus, flacfetchE2EStatus);
+      updateKaraokeGenE2ECard(karaokeGenE2EStatus, days);
+      updateOverallStatus(liveResult, flacfetchResult, e2eStatus, flacfetchE2EStatus, karaokeGenE2EStatus);
     }
 
     // Run on load
