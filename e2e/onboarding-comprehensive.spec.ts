@@ -112,56 +112,32 @@ test.describe("Comprehensive Onboarding Flow", () => {
     await page.waitForTimeout(1000);
 
     // ========================================
-    // STEP 2: Genre Selection
+    // STEP 2: Genre & Decade Selection (combined on one page)
     // ========================================
     await expect(page.locator("[data-testid='genre-grid']")).toBeVisible({
       timeout: 15000,
     });
+    await expect(page.locator("[data-testid='decade-section']")).toBeVisible({
+      timeout: 5000,
+    });
+
+    // Select some decades first (they appear above genres)
+    await page.locator("[data-testid='decade-2010s']").click();
+    await page.locator("[data-testid='decade-2020s']").click();
 
     // Select multiple genres (this affects smart artist suggestions)
     await page.locator("[data-testid='genre-pop']").click();
     await page.locator("[data-testid='genre-rock']").click();
     await page.locator("[data-testid='genre-electronic']").click();
 
-    // Verify selections
-    await expect(page.locator("[data-testid='genre-selection-count']")).toContainText("3");
-
     // Continue to next step
     await page.locator("button").filter({ hasText: /continue/i }).click();
 
     // ========================================
-    // STEP 2 (cont): Decade Selection
-    // ========================================
-    await expect(page.locator("[data-testid='decade-section']")).toBeVisible({
-      timeout: 10000,
-    });
-
-    // Select some decades
-    await page.locator("[data-testid='decade-2010s']").click();
-    await page.locator("[data-testid='decade-2020s']").click();
-
-    // Continue
-    await page.locator("button").filter({ hasText: /continue/i }).click();
-
-    // ========================================
-    // STEP 3: Preferences
-    // ========================================
-    await expect(page.locator("[data-testid='energy-section']")).toBeVisible({
-      timeout: 10000,
-    });
-
-    // Set some preferences
-    await page.locator("[data-testid='energy-medium']").click();
-    await page.locator("[data-testid='vocal-comfort-any']").click();
-
-    // Continue
-    await page.locator("button").filter({ hasText: /continue/i }).click();
-
-    // ========================================
-    // STEP 4: Music You Know (Manual Entry)
+    // STEP 3: Artists You Know (Manual Entry)
     // This is the key step that triggers smart artist API with manual_artists
     // ========================================
-    await expect(page.locator("[data-testid='music-you-know-heading']")).toBeVisible({
+    await expect(page.locator("[data-testid='artists-you-know-heading']")).toBeVisible({
       timeout: 10000,
     });
 
@@ -198,14 +174,28 @@ test.describe("Comprehensive Onboarding Flow", () => {
       }
     }
 
+    // Continue to preferences
+    await page.locator("button").filter({ hasText: /continue/i }).click();
+
+    // ========================================
+    // STEP 4: Karaoke Preferences
+    // ========================================
+    await expect(page.locator("[data-testid='energy-section']")).toBeVisible({
+      timeout: 10000,
+    });
+
+    // Set some preferences
+    await page.locator("[data-testid='energy-medium']").click();
+    await page.locator("[data-testid='vocal-comfort-any']").click();
+
     // Continue to smart artist selection
     await page.locator("button").filter({ hasText: /continue/i }).click();
 
     // ========================================
-    // STEP 5: Artists You Know (Smart Selection with Infinite Scroll)
+    // STEP 5: Know Any of These? (Smart Artist Selection with Infinite Scroll)
     // This calls /api/quiz/artists/smart which was causing OOM
     // ========================================
-    await expect(page.locator("[data-testid='artist-heading']")).toBeVisible({
+    await expect(page.locator("[data-testid='smart-artists-heading']")).toBeVisible({
       timeout: 15000,
     });
 
@@ -278,18 +268,43 @@ test.describe("Comprehensive Onboarding Flow", () => {
     // COMPLETE THE QUIZ
     // ========================================
 
-    // Find and click the finish/submit button
+    // Find and click the finish quiz button
     const finishButton = page
       .locator("button")
-      .filter({ hasText: /see recommendations|finish|submit/i });
+      .filter({ hasText: /finish quiz/i });
     await expect(finishButton).toBeVisible({ timeout: 5000 });
     await finishButton.click();
+
+    // ========================================
+    // STEP 6: Email Collection
+    // ========================================
+    await expect(page.locator("[data-testid='email-step-heading']")).toBeVisible({
+      timeout: 15000,
+    });
+
+    // Enter email
+    const emailInput = page.locator("[data-testid='email-input']");
+    await expect(emailInput).toBeVisible({ timeout: 5000 });
+    await emailInput.fill("e2e-test@example.com");
+
+    // Save email
+    const saveButton = page.locator("[data-testid='email-save-button']");
+    await expect(saveButton).toBeVisible({ timeout: 5000 });
+    await saveButton.click();
+
+    // Wait for recommendations to be ready
+    await expect(page.locator("[data-testid='view-recommendations-button']")).toBeEnabled({
+      timeout: 30000,
+    });
+
+    // Click to view recommendations
+    await page.locator("[data-testid='view-recommendations-button']").click();
 
     // Wait for navigation to recommendations
     await page.waitForURL(/\/recommendations/, { timeout: 30000 });
 
     // Verify recommendations page loaded successfully
-    await expect(page.locator("h1")).toBeVisible({ timeout: 10000 });
+    await expect(page.locator("h1").first()).toBeVisible({ timeout: 10000 });
 
     // ========================================
     // VERIFICATION
