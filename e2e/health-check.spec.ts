@@ -110,6 +110,17 @@ test.describe("Production Health Checks", () => {
       // Wait for page to fully load
       await page.waitForTimeout(2000);
 
+      // Quiz now starts at step 1 (intro) - verify it loads
+      await expect(page.locator("[data-testid='quiz-heading']")).toBeVisible({ timeout: 10000 });
+
+      // Click "Get Started" to advance to step 2 (genre selection)
+      const getStartedBtn = page.locator("button").filter({ hasText: /get started/i });
+      await expect(getStartedBtn).toBeVisible({ timeout: 5000 });
+      await getStartedBtn.click();
+
+      // Wait for step 2 to load
+      await page.waitForTimeout(1000);
+
       // Genre grid should be visible
       const genreGrid = page.locator("[data-testid='genre-grid']");
       await expect(genreGrid).toBeVisible({ timeout: 15000 });
@@ -127,7 +138,13 @@ test.describe("Production Health Checks", () => {
       await page.waitForLoadState("networkidle");
       await page.waitForTimeout(2000);
 
-      // Navigate through genre step first
+      // Quiz starts at step 1 (intro) - click Get Started to reach genre selection
+      const getStartedBtn = page.locator("button").filter({ hasText: /get started/i });
+      await expect(getStartedBtn).toBeVisible({ timeout: 10000 });
+      await getStartedBtn.click();
+      await page.waitForTimeout(1000);
+
+      // Now on step 2 (genre selection) - select genres
       await page.locator("[data-testid='genre-rock']").click();
       await page.locator("[data-testid='genre-pop']").click();
 
