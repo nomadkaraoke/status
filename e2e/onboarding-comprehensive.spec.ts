@@ -4,12 +4,12 @@ import { test, expect, Page } from "@playwright/test";
  * Comprehensive onboarding flow test for decide.nomadkaraoke.com.
  *
  * This test verifies the complete quiz flow including:
- * - Genre selection (step 1)
- * - Decade selection (step 2)
- * - Preferences selection (step 3)
- * - Manual artist/song entry (step 4) - triggers smart artist API
- * - Smart artist suggestions with infinite scroll (step 5)
- * - Quiz completion and recommendations display
+ * - Intro / How It Works (step 1)
+ * - Genre selection (step 2)
+ * - Decade selection + preferences + manual artist/song entry (step 3-4)
+ * - Smart artist suggestions (step 5)
+ * - Email collection + quiz completion (step 6)
+ * - Recommendations display
  *
  * IMPORTANT: This test would have caught the OOM bug on 2026-01-15 where
  * the /api/quiz/artists/smart endpoint returned 503 due to loading too
@@ -100,7 +100,19 @@ test.describe("Comprehensive Onboarding Flow", () => {
     await page.waitForLoadState("networkidle");
 
     // ========================================
-    // STEP 1: Genre Selection
+    // STEP 1: Intro / How It Works
+    // ========================================
+    // Wait for intro page and click Get Started
+    await expect(page.locator("[data-testid='quiz-heading']")).toBeVisible({
+      timeout: 15000,
+    });
+    const getStartedBtn = page.locator("button").filter({ hasText: /get started/i });
+    await expect(getStartedBtn).toBeVisible({ timeout: 5000 });
+    await getStartedBtn.click();
+    await page.waitForTimeout(1000);
+
+    // ========================================
+    // STEP 2: Genre Selection
     // ========================================
     await expect(page.locator("[data-testid='genre-grid']")).toBeVisible({
       timeout: 15000,
@@ -118,7 +130,7 @@ test.describe("Comprehensive Onboarding Flow", () => {
     await page.locator("button").filter({ hasText: /continue/i }).click();
 
     // ========================================
-    // STEP 2: Decade Selection
+    // STEP 2 (cont): Decade Selection
     // ========================================
     await expect(page.locator("[data-testid='decade-section']")).toBeVisible({
       timeout: 10000,
