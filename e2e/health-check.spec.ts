@@ -153,9 +153,9 @@ test.describe("Production Health Checks", () => {
       await expect(continueBtn).toBeVisible({ timeout: 5000 });
       await continueBtn.click();
 
-      // Verify we moved to next step (any new content visible)
+      // Verify we moved to next step (step 3 - artist entry)
       await page.waitForTimeout(1000);
-      await expect(page.locator("h1, h2")).toBeVisible({ timeout: 10000 });
+      await expect(page.locator("h1, h2").first()).toBeVisible({ timeout: 10000 });
     });
   });
 });
