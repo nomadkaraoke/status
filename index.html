@@ -711,7 +711,8 @@
     const CONFIG = {
       owner: 'nomadkaraoke',
       repo: 'status',
-      e2eWorkflow: 'health-check.yml',
+      decideWorkflow: 'decide-health.yml',
+      flacfetchWorkflow: 'flacfetch-health.yml',
       // Karaoke Gen repo for happy path e2e test
       karaokeGenRepo: 'karaoke-gen',
       karaokeGenE2EWorkflow: 'e2e-happy-path.yml',
@@ -1071,14 +1072,15 @@
     async function init() {
       // Fetch workflow history first (automated tests section is at top)
       const days = getLast7Days();
-      const [e2eRuns, karaokeGenRuns] = await Promise.all([
-        fetchWorkflowRuns(CONFIG.e2eWorkflow),
+      const [decideRuns, flacfetchRuns, karaokeGenRuns] = await Promise.all([
+        fetchWorkflowRuns(CONFIG.decideWorkflow),
+        fetchWorkflowRuns(CONFIG.flacfetchWorkflow),
         fetchWorkflowRuns(CONFIG.karaokeGenE2EWorkflow, 100, CONFIG.karaokeGenRepo)
       ]);
 
       // Process and display automated test results immediately
-      const e2eStatus = processRuns(e2eRuns, days);
-      const flacfetchE2EStatus = processRuns(e2eRuns, days);
+      const e2eStatus = processRuns(decideRuns, days);
+      const flacfetchE2EStatus = processRuns(flacfetchRuns, days);
       const karaokeGenE2EStatus = processRuns(karaokeGenRuns, days);
 
       updateE2ECard(e2eStatus, days);
