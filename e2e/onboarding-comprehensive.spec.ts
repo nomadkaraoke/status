@@ -199,16 +199,18 @@ test.describe("Comprehensive Onboarding Flow", () => {
       timeout: 15000,
     });
 
-    // Wait for artists to load
+    // Wait for artist grid and actual artist cards to load
+    // Use specific artist card selector to avoid matching loading indicators
     await expect(page.locator("[data-testid='artist-grid']")).toBeVisible({
       timeout: 15000,
     });
 
-    // Verify some artist cards loaded
-    const artistCards = page.locator("[data-testid='artist-grid'] > *");
-    await expect(artistCards.first()).toBeVisible({ timeout: 10000 });
+    // Wait for at least one actual artist card (not loading indicator)
+    // Artist cards have data-testid="artist-card-{index}"
+    const artistCards = page.locator("[data-testid^='artist-card-']");
+    await expect(artistCards.first()).toBeVisible({ timeout: 30000 });
 
-    // Get initial count
+    // Get initial count of actual artist cards
     const initialCount = await artistCards.count();
     expect(initialCount).toBeGreaterThan(0);
 

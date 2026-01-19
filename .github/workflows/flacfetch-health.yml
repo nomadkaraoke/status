@@ -115,7 +115,7 @@ jobs:
           password: ${{ secrets.SENDGRID_API_KEY }}
           subject: "HEALTH FAILED - Flacfetch Audio Service #${{ github.run_number }}"
           to: andrew@beveridge.uk
-          from: noreply@nomadkaraoke.com
+          from: admin@nomadkaraoke.com
           body: |
             Production health check failed for Flacfetch audio service.
 
