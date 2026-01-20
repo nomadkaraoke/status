@@ -550,9 +550,9 @@
       </div>
     </div>
 
-    <!-- E2E Tests Section -->
+    <!-- Hourly Health Checks Section -->
     <div class="section-header">
-      <span class="section-title">Automated Tests</span>
+      <span class="section-title">Hourly Checks</span>
     </div>
     <div class="services-grid">
       <div class="service-card" id="e2e-card">
@@ -630,7 +630,7 @@
             </div>
             <div>
               <div class="service-name">Gen</div>
-              <div class="service-endpoint">Daily generation test</div>
+              <div class="service-endpoint">Hourly health checks</div>
             </div>
           </div>
           <div class="service-status unknown" id="karaoke-gen-e2e-status">
@@ -698,6 +698,59 @@
       </div>
     </div>
 
+    <!-- Live API Checks - Karaoke Gen -->
+    <div class="section-header">
+      <span class="section-title">Karaoke Gen - Live Checks</span>
+    </div>
+    <div class="live-checks" id="gen-checks">
+      <div class="check-item">
+        <span class="check-name">API Health</span>
+        <span class="check-result loading" id="check-gen-health">Checking...</span>
+      </div>
+      <div class="check-item">
+        <span class="check-name">Frontend</span>
+        <span class="check-result loading" id="check-gen-frontend">Checking...</span>
+      </div>
+    </div>
+
+    <!-- Automated End to End Tests Section -->
+    <div class="section-header">
+      <span class="section-title">Automated End to End Tests</span>
+    </div>
+    <div class="services-grid" style="grid-template-columns: 1fr;">
+      <div class="service-card" id="gen-e2e-daily-card">
+        <div class="service-header">
+          <div class="service-info">
+            <div class="service-icon">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <polygon points="23 7 16 12 23 17 23 7"></polygon>
+                <rect x="1" y="5" width="15" height="14" rx="2" ry="2"></rect>
+              </svg>
+            </div>
+            <div>
+              <div class="service-name">Gen Happy Path</div>
+              <div class="service-endpoint">Daily full user journey test (60 min)</div>
+            </div>
+          </div>
+          <div class="service-status unknown" id="gen-e2e-daily-status">
+            <div class="status-dot loading"></div>
+            <span>...</span>
+          </div>
+        </div>
+        <div class="timeline-container">
+          <div class="timeline-header">
+            <span class="timeline-label">7-day history</span>
+            <span class="uptime-badge" id="gen-e2e-daily-uptime">--%</span>
+          </div>
+          <div class="timeline" id="gen-e2e-daily-timeline"></div>
+          <div class="timeline-dates">
+            <span id="gen-e2e-daily-date-start">--</span>
+            <span>Today</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
     <footer>
       <div class="footer-links">
         <a href="https://nomadkaraoke.com" target="_blank">Nomad Karaoke</a>
@@ -713,7 +766,9 @@
       repo: 'status',
       decideWorkflow: 'decide-health.yml',
       flacfetchWorkflow: 'flacfetch-health.yml',
-      // Karaoke Gen repo for happy path e2e test
+      // Karaoke Gen hourly health check (runs from this repo)
+      genHealthWorkflow: 'gen-health.yml',
+      // Karaoke Gen daily happy path e2e test (runs from karaoke-gen repo)
       karaokeGenRepo: 'karaoke-gen',
       karaokeGenE2EWorkflow: 'e2e-happy-path.yml',
       // Use direct Cloud Run URL for API checks (Cloudflare Worker strips CORS headers)
@@ -721,7 +776,10 @@
       // Frontend URL still uses Cloudflare (same-origin not needed for HTML fetch)
       frontendBase: 'https://decide.nomadkaraoke.com',
       // Flacfetch audio service (via Cloudflare proxy)
-      flacfetchBase: 'https://flacfetch.nomadkaraoke.com'
+      flacfetchBase: 'https://flacfetch.nomadkaraoke.com',
+      // Karaoke Gen API and frontend
+      genApiBase: 'https://api.nomadkaraoke.com',
+      genFrontendBase: 'https://gen.nomadkaraoke.com'
     };
 
     // Live health checks for Karaoke Decide
@@ -837,6 +895,45 @@
           el.className = 'check-result failure';
           el.textContent = 'Unreachable';
         });
+        anyFailed = true;
+        allPassed = false;
+      }
+
+      return { allPassed, anyFailed };
+    }
+
+    // Live health checks for Karaoke Gen
+    async function runGenChecks() {
+      let allPassed = true;
+      let anyFailed = false;
+
+      // Check API health
+      const healthEl = document.getElementById('check-gen-health');
+      try {
+        const response = await fetch(CONFIG.genApiBase + '/api/health', { timeout: 30000 });
+        if (response.ok) {
+          healthEl.className = 'check-result success';
+          healthEl.textContent = 'OK';
+        } else {
+          throw new Error(`HTTP ${response.status}`);
+        }
+      } catch (error) {
+        healthEl.className = 'check-result failure';
+        healthEl.textContent = 'Failed';
+        anyFailed = true;
+        allPassed = false;
+      }
+
+      // Check frontend
+      const frontendEl = document.getElementById('check-gen-frontend');
+      try {
+        const response = await fetch(CONFIG.genFrontendBase, { mode: 'no-cors' });
+        // no-cors returns opaque response, so we can only check if it didn't throw
+        frontendEl.className = 'check-result success';
+        frontendEl.textContent = 'OK';
+      } catch (error) {
+        frontendEl.className = 'check-result failure';
+        frontendEl.textContent = 'Failed';
         anyFailed = true;
         allPassed = false;
       }
@@ -1014,7 +1111,7 @@
       renderTimeline('flacfetch-e2e-timeline', status.days);
     }
 
-    function updateKaraokeGenE2ECard(status, days) {
+    function updateGenHealthCard(status, days) {
       const statusEl = document.getElementById('karaoke-gen-e2e-status');
       statusEl.className = `service-status ${status.current}`;
       statusEl.innerHTML = `
@@ -1034,7 +1131,27 @@
       renderTimeline('karaoke-gen-e2e-timeline', status.days);
     }
 
-    function updateOverallStatus(liveCheckResult, flacfetchResult, e2eStatus, flacfetchE2EStatus, karaokeGenE2EStatus) {
+    function updateGenE2EDailyCard(status, days) {
+      const statusEl = document.getElementById('gen-e2e-daily-status');
+      statusEl.className = `service-status ${status.current}`;
+      statusEl.innerHTML = `
+        <div class="status-dot ${status.current}"></div>
+        <span>${status.current === 'success' ? 'Passing' : status.current === 'failure' ? 'Failing' : '...'}</span>
+      `;
+
+      if (status.currentUrl) {
+        statusEl.style.cursor = 'pointer';
+        statusEl.onclick = () => window.open(status.currentUrl, '_blank');
+      }
+
+      const uptime = calculateUptime(status.days);
+      document.getElementById('gen-e2e-daily-uptime').textContent = uptime !== null ? `${uptime}%` : '--%';
+      document.getElementById('gen-e2e-daily-date-start').textContent = formatDate(days[0]);
+
+      renderTimeline('gen-e2e-daily-timeline', status.days);
+    }
+
+    function updateOverallStatus(liveCheckResult, flacfetchResult, genResult, e2eStatus, flacfetchE2EStatus, genHealthStatus, genE2EDailyStatus) {
       const banner = document.getElementById('overall-status');
       const indicator = banner.querySelector('.status-indicator');
 
@@ -1042,15 +1159,15 @@
       let statusText = 'All Systems Operational';
       let dotClass = 'success';
 
-      if (liveCheckResult.anyFailed || flacfetchResult.anyFailed) {
+      if (liveCheckResult.anyFailed || flacfetchResult.anyFailed || genResult.anyFailed) {
         overallStatus = 'outage';
         statusText = 'Service Disruption';
         dotClass = 'failure';
-      } else if (e2eStatus?.current === 'failure' || flacfetchE2EStatus?.current === 'failure' || karaokeGenE2EStatus?.current === 'failure') {
+      } else if (e2eStatus?.current === 'failure' || flacfetchE2EStatus?.current === 'failure' || genHealthStatus?.current === 'failure' || genE2EDailyStatus?.current === 'failure') {
         overallStatus = 'degraded';
         statusText = 'Degraded Performance';
         dotClass = 'warning';
-      } else if (!liveCheckResult.allPassed || !flacfetchResult.allPassed) {
+      } else if (!liveCheckResult.allPassed || !flacfetchResult.allPassed || !genResult.allPassed) {
         overallStatus = 'degraded';
         statusText = 'Partial Issues';
         dotClass = 'warning';
@@ -1072,29 +1189,36 @@
     async function init() {
       // Fetch workflow history first (automated tests section is at top)
       const days = getLast7Days();
-      const [decideRuns, flacfetchRuns, karaokeGenRuns] = await Promise.all([
+      const [decideRuns, flacfetchRuns, genHealthRuns, genE2EDailyRuns] = await Promise.all([
         fetchWorkflowRuns(CONFIG.decideWorkflow),
         fetchWorkflowRuns(CONFIG.flacfetchWorkflow),
+        fetchWorkflowRuns(CONFIG.genHealthWorkflow),
         fetchWorkflowRuns(CONFIG.karaokeGenE2EWorkflow, 100, CONFIG.karaokeGenRepo)
       ]);
 
       // Process and display automated test results immediately
       const e2eStatus = processRuns(decideRuns, days);
       const flacfetchE2EStatus = processRuns(flacfetchRuns, days);
-      const karaokeGenE2EStatus = processRuns(karaokeGenRuns, days);
+      const genHealthStatus = processRuns(genHealthRuns, days);
+      const genE2EDailyStatus = processRuns(genE2EDailyRuns, days);
 
+      // Update hourly checks section
       updateE2ECard(e2eStatus, days);
       updateFlacfetchE2ECard(flacfetchE2EStatus, days);
-      updateKaraokeGenE2ECard(karaokeGenE2EStatus, days);
+      updateGenHealthCard(genHealthStatus, days);
 
-      // Then run live checks for both services in parallel
-      const [liveResult, flacfetchResult] = await Promise.all([
+      // Update daily E2E tests section
+      updateGenE2EDailyCard(genE2EDailyStatus, days);
+
+      // Then run live checks for all services in parallel
+      const [liveResult, flacfetchResult, genResult] = await Promise.all([
         runLiveChecks(),
-        runFlacfetchChecks()
+        runFlacfetchChecks(),
+        runGenChecks()
       ]);
 
       // Update overall status with all results
-      updateOverallStatus(liveResult, flacfetchResult, e2eStatus, flacfetchE2EStatus, karaokeGenE2EStatus);
+      updateOverallStatus(liveResult, flacfetchResult, genResult, e2eStatus, flacfetchE2EStatus, genHealthStatus, genE2EDailyStatus);
     }
 
     // Run on load
