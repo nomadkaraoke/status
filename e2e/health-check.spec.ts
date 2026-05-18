@@ -103,8 +103,10 @@ test.describe("Production Health Checks", () => {
     });
 
     test("quiz page loads with genre selection", async ({ page }) => {
-      // Go directly to quiz (will create guest session)
-      await page.goto("/quiz");
+      // Go directly to quiz (will create guest session).
+      // Use /en/quiz: production is a static export, so the locale middleware
+      // does not run and bare /quiz returns 404.
+      await page.goto("/en/quiz");
       await page.waitForLoadState("networkidle");
 
       // Wait for page to fully load
@@ -133,8 +135,8 @@ test.describe("Production Health Checks", () => {
     // Note: Full artist autocomplete flow test skipped - the critical artist index API test
     // in the API Health suite covers the underlying functionality that was previously broken
     test("can navigate through quiz steps", async ({ page }) => {
-      // Go to quiz
-      await page.goto("/quiz");
+      // Go to quiz (locale-prefixed; see note above)
+      await page.goto("/en/quiz");
       await page.waitForLoadState("networkidle");
       await page.waitForTimeout(2000);
 

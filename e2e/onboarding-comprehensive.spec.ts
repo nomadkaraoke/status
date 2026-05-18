@@ -95,8 +95,10 @@ test.describe("Comprehensive Onboarding Flow", () => {
       }
     });
 
-    // Start the quiz
-    await page.goto("/quiz");
+    // Start the quiz.
+    // Use /en/quiz: production is a static export, so the locale middleware
+    // does not run and bare /quiz returns 404.
+    await page.goto("/en/quiz");
     await page.waitForLoadState("networkidle");
 
     // ========================================
@@ -339,8 +341,8 @@ test.describe("Comprehensive Onboarding Flow", () => {
      * - Large exclude list (50+ artists)
      */
 
-    // First, get a guest token by visiting the quiz
-    await page.goto("/quiz");
+    // First, get a guest token by visiting the quiz (locale-prefixed; see note above)
+    await page.goto("/en/quiz");
     await page.waitForLoadState("networkidle");
     await page.waitForTimeout(2000);
 
