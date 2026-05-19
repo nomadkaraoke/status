@@ -113,7 +113,7 @@ jobs:
           password: ${{ secrets.POSTMARK_SERVER_TOKEN }}
           subject: "HEALTH FAILED - Karaoke Gen #${{ github.run_number }}"
           to: andrew@beveridge.uk
-          from: admin@nomadkaraoke.com
+          from: "Karaoke Gen Health <admin@nomadkaraoke.com>"
           body: |
             Production health check failed for Karaoke Gen.
 
